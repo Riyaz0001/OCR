@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta charset="UTF-8">
+
+<title>SAPUI5 OCR</title>
+
+<script type="text/javascript" src="cordova.js"></script>
+<script type="text/javascript" src="js/index.js"></script>
+<script type="text/javascript" charset="utf-8">
+	var pictureSource; // picture source
+	var destinationType; // sets the format of returned value 
+
+	// Wait for Cordova to connect with the device
+	document.addEventListener("deviceready", onDeviceReady, false);
+
+	// Cordova is ready to be used!
+	function onDeviceReady() {
+		pictureSource = navigator.camera.PictureSourceType;
+		destinationType = navigator.camera.DestinationType;
+	}
+
+	function resOnError(error) {
+		alert("failed with error code: " + error.code);
+	}
+
+	//Callback function when the file has been moved successfully - inserting the complete path
+	function successMove(entry) {
+		callNativePlugin(entry.fullPath);
+	}
+
+	// Called when a photo is successfully retrieved
+	function onPhotoURISuccess(imageURI) {
+		var gotFileEntry = function(fileEntry) {
+			var gotFileSystem = function(fileSystem) {
+
+				fileSystem.root.getDirectory("OCRFolder", {
+					create : true
+				}, function(dataDir) {
+					var newFileName = "ocr.jpg";
+					// copy the file
+					fileEntry.moveTo(dataDir, newFileName, successMove,
+							resOnError);
+
+				}, resOnError);
+
+			};
+			// get file system to copy or move image file to
+			window.requestFileSystem(LocalFileSystem.PERSISTENT, 0,
+					gotFileSystem, resOnError);
+		};
+		// resolve file system for image
+		window.resolveLocalFileSystemURI(imageURI, gotFileEntry, resOnError);
+	}
+
+	// A button will call this function
+	function capturePhoto() {
+		// Take picture using device camera and retrieve image as file uri string
+		navigator.camera.getPicture(onPhotoURISuccess, onFail, {
+			quality : 100,
+			destinationType : Camera.DestinationType.FILE_URI
+		});
+	}
+
+	// A button will call this function
+	function capturePhotoEdit() {
+		// Take picture using device camera, allow edit, and retrieve image as base64-encoded string  
+		navigator.camera.getPicture(onPhotoURISuccess, onFail, {
+			quality : 50,
+			allowEdit : true,
+			destinationType : Camera.DestinationType.FILE_URI
+		});
+	}
+
+	// Called if something bad happens.
+	function onFail(message) {
+		alert('Failed because: ' + message);
+	}
+
+	function callNativePlugin(imageURI) {
+		var tesseractPlugin = cordova
+				.require('com.tesseract.phonegap.tesseractPlugin.TesseractPlugin');
+		tesseractPlugin.createEvent(imageURI, nativePluginResultHandler);
+	}
+
+	function nativePluginResultHandler(callback) {
+		alert("Result: " + callback);
+		var result = document.getElementById("result");
+		result.innerHTML = callback;
+	}
+
+	function nativePluginErrorHandler(error) {
+		alert("error: " + error);
+	}
+</script>
+</head>
+
+<body>
+		<button onclick="capturePhoto();">Capture Photo</button> <br>
+		<br>
+        <button onclick="capturePhotoEdit();">Capture Editable Photo</button> <br>
+		<br>
+		Result is:
+		<br>
+		<p id='result'></p>
+</body>
+
+</html>
